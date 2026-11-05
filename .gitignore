@@ -1,0 +1,8 @@
+*.o
+*.a
+libwiringPi.so*
+tests/test_gpio
+*~
+debian-template/wiringpi*.deb
+scripts/probe
+scripts/findwire

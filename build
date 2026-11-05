@@ -1,0 +1,54 @@
+#!/bin/sh -e
+#
+# build:
+#	wiringJON build & install script (mirrors the classic wiringPi ./build)
+#	Builds the library and installs it into /usr/local.
+#	Usage: ./build          — build + install (sudo)
+#	       ./build uninstall
+#	       ./build clean
+#################################################################################
+
+sudo=${WIRINGPI_SUDO-sudo}
+
+if [ x"$1" = "xclean" ]; then
+  make -C wiringPi clean
+  make -C tests clean
+  exit 0
+fi
+
+if [ x"$1" = "xuninstall" ]; then
+  $sudo make -C wiringPi uninstall
+  exit 0
+fi
+
+if [ x"$1" != "x" ]; then
+  echo "Usage: $0 [clean | uninstall]"
+  exit 1
+fi
+
+echo "wiringJON Build script"
+echo "======================"
+echo
+
+echo "wiringJON (wiringPi API on Jetson Orin Nano, libgpiod backend)"
+cd wiringPi
+$sudo make uninstall >/dev/null 2>&1 || true
+make
+check_make_ok=$?
+if [ $check_make_ok != 0 ]; then
+  echo "Make Failed... check the messages above."
+  exit 1
+fi
+$sudo make install
+
+echo
+echo "Tests (no install):"
+cd ../tests
+make
+
+echo
+echo "All Done."
+echo ""
+echo "NOTE: To compile programs with wiringJON, add -lwiringPi"
+echo "      (API/ABI-compatible with wiringPi)."
+echo ""
