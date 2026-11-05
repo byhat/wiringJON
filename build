@@ -21,7 +21,7 @@ fail ()
 
 build_all ()
 {
-  for d in wiringPi devLib gpio wiringPiD ; do
+  for d in wiringPi devLib gpio wiringPiD examples ; do
     echo "--- $d"
     make -C $d || fail $d
   done
