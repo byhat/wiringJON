@@ -981,7 +981,7 @@ unsigned int pulseIn (int pin, int level, unsigned int timeoutUs)
   return (unsigned int)(pulseInNS (pin, level, (unsigned long long)timeoutUs * 1000ull) / 1000ull) ;
 }
 
-unsigned long long frequencyIn (int pin, unsigned int windowMs)
+unsigned long long frequencyIn (int pin, unsigned long windowMs)
 {
   uint64_t start = nowNS () ;
   uint64_t window = (uint64_t)windowMs * 1000000ull ;
