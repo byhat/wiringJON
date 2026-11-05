@@ -77,6 +77,50 @@ def main():
             return 0
         finally:
             cli.close()
+    if args[0] == "--sync":
+        # --sync LOCALDIR REMOTEDIR [exclude1 exclude2 ...]
+        import io
+        import os as _os
+        import tarfile
+        local, remote = args[1], args[2]
+        excludes = args[3:]
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+            for root, dirs, files in os.walk(local):
+                dirs[:] = [d for d in dirs if d not in excludes]
+                for fn in files:
+                    if fn in excludes:
+                        continue
+                    full = _os.path.join(root, fn)
+                    tf.add(full, arcname=_os.path.relpath(full, local))
+        cli = connect()
+        try:
+            sftp = cli.open_sftp()
+            try:
+                sftp.mkdir(remote)
+            except IOError:
+                pass
+            tf = tarfile.open(fileobj=io.BytesIO(buf.getvalue()))
+            count = 0
+            for mem in tf.getmembers():
+                if not mem.isfile():
+                    continue
+                path = remote + "/" + mem.name
+                parts = path.split("/")[:-1]
+                for i in range(2, len(parts) + 1):
+                    p = "/".join(parts[:i])
+                    try:
+                        sftp.mkdir(p)
+                    except IOError:
+                        pass
+                f = sftp.open(path, "wb")
+                f.write(tf.extractfile(mem).read())
+                f.close()
+                count += 1
+            print("synced %d files to %s" % (count, remote))
+            return 0
+        finally:
+            cli.close()
     return run(args[0], use_sudo)
 
 

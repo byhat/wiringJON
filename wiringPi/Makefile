@@ -21,9 +21,9 @@ INCLUDE	= -I.
 CFLAGS	= $(DEBUG) -Wall -Wextra $(INCLUDE) -fPIC -D_GNU_SOURCE
 LIBS	= -lgpiod -lpthread
 
-SRC	= wiringPi.c pinmap.c
+SRC	= $(wildcard *.c)
 OBJ	= $(SRC:.c=.o)
-HEADERS	= wiringPi.h pinmap.h
+HEADERS	= $(wildcard *.h)
 
 all:		$(DYNAMIC) $(STATIC)
 
