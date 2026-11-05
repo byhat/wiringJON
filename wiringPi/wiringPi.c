@@ -874,7 +874,7 @@ int getAlt (int pin)
   if (physDir [pd->phys] == DIR_PWM)
     return WPI_ALT0 ;				/* PWM alternate, like the Pi */
   if (!physLine [pd->phys])
-    return WPI_NONE ;
+    return WPI_ALT_INPUT ;			/* unrequested = idle input, like the Pi */
   return (physDir [pd->phys] == OUTPUT) ? WPI_ALT_OUTPUT : WPI_ALT_INPUT ;
 }
 

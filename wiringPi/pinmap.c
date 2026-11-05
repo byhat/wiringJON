@@ -119,6 +119,15 @@ int wjonBoardInit(void)
 {
   if (boardOk) return 0;
 
+  /* escape hatch for unit tests on non-Jetson hosts */
+  if (getenv("WIRINGJON_FORCE_BOARD"))
+  {
+    strncpy(boardNameBuf, "Jetson Orin (forced, test)", sizeof(boardNameBuf) - 1);
+    memcpy((void *)wjonPins, orinNanoPins, sizeof(orinNanoPins));
+    boardOk = 1;
+    return 0;
+  }
+
   char compat[2048];
   int n = dtRead("/proc/device-tree/compatible", compat, sizeof(compat));
   if (n <= 0) {

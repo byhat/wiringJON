@@ -32,4 +32,26 @@ echo "  no duplicates"
 echo "== devLib build =="
 make -s -C devLib
 
+echo "== mock unit tests (emulated gpiochips + bench wire) =="
+rm -rf /tmp/wjonmock && mkdir -p /tmp/wjonmock
+ok=0
+for f in wiringPi/*.c ; do
+  b=$(basename "${f%.c}")
+  gcc -c -O1 -D_GNU_SOURCE -IwiringPi $GPIOD_INC "$f" -o "/tmp/wjonmock/$b.o" || exit 1
+  ok=$((ok+1))
+done
+gcc -O1 -D_GNU_SOURCE -IwiringPi $GPIOD_INC tests/test_mock.c tests/mock_gpiod.c tests/mock_crypt.c \
+    /tmp/wjonmock/*.o -o /tmp/test_mock -lpthread -lm
+/tmp/test_mock || exit 1
+
+echo "== gpio readall on mock =="
+gcc -O1 -D_GNU_SOURCE -IwiringPi -IdevLib $GPIOD_INC gpio/gpio.c gpio/readall.c \
+    tests/mock_gpiod.c tests/mock_crypt.c /tmp/wjonmock/*.o -o /tmp/gpio_mock \
+    -lpthread -lm -IdevLib 2>/dev/null || \
+gcc -O1 -D_GNU_SOURCE -IwiringPi -IdevLib $GPIOD_INC gpio/gpio.c gpio/readall.c \
+    devLib/*.o tests/mock_gpiod.c tests/mock_crypt.c /tmp/wjonmock/*.o -o /tmp/gpio_mock \
+    -lpthread -lm
+WIRINGJON_FORCE_BOARD=1 /tmp/gpio_mock -v | head -8
+WIRINGJON_FORCE_BOARD=1 /tmp/gpio_mock readall
+
 echo "== local CI PASS (link + hardware tests run on the Jetson) =="

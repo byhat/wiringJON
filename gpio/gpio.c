@@ -1046,7 +1046,8 @@ int main (int argc, char *argv [])
     exit (EXIT_SUCCESS) ;
   }
 
-  if (geteuid () != 0 && access ("/dev/gpiochip0", O_RDWR) != 0)
+  if (geteuid () != 0 && access ("/dev/gpiochip0", O_RDWR) != 0
+      && getenv ("WIRINGJON_FORCE_BOARD") == NULL)
   {
     fprintf (stderr, "%s: Need root (or membership in the 'gpio' group) to run.\n", argv [0]) ;
     exit (EXIT_FAILURE) ;

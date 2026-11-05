@@ -40,7 +40,7 @@
 typedef struct
 {
   int    active ;
-  char   pwmDir [96] ;		/* /sys/class/pwm/pwmchipN/pwm0 */
+  char   pwmDir [160] ;		/* /sys/class/pwm/pwmchipN/pwm0 */
   unsigned int range ;		/* pwmSetRange, default 1024      */
   unsigned int clock ;		/* pwmSetClock, default 32        */
   int    mode ;			/* PWM_MODE_MS / PWM_MODE_BAL     */
@@ -102,7 +102,7 @@ static int findChipDir (const char *dtAddr, char *out, size_t outLen)
   {
     if (strncmp (e->d_name, "pwmchip", 7) != 0)
       continue ;
-    char chipPath [PATH_MAX], link [PATH_MAX] ;
+    char chipPath [PATH_MAX], link [PATH_MAX + 64] ;
     snprintf (chipPath, sizeof (chipPath), "%s/%s", root, e->d_name) ;
     snprintf (link, sizeof (link), "%s/device", chipPath) ;
     ssize_t n = readlink (link, link, sizeof (link) - 1) ;
