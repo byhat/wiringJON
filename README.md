@@ -63,8 +63,9 @@ Jetson.GPIO library.
 
 ## Jetson limitations (documented, not hidden)
 
-- **No `wiringPiSetupSys()`** — this kernel (6.8-tegra) has no
-  `/sys/class/gpio`. Use the other setup functions.
+- **`wiringPiSetupSys()`** — this kernel (6.8-tegra) has no
+  `/sys/class/gpio`; the call works as an alias for GPIO (BCM-style)
+  numbering with a one-time notice, so old scripts keep running.
 - **Pulls**: Tegra header pull resistors are usually fixed by the pinmux;
   `pullUpDnControl()` forwards the request to the kernel and reports
   (once) when the hardware refuses.

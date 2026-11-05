@@ -591,9 +591,15 @@ int wiringPiSetupGpioDevice (enum WPIPinType pinType)
 
 int wiringPiSetupSys (void)
 {
-  return wiringPiFailure (WPI_ALMOST,
-    "wiringPiSetupSys: the sysfs GPIO interface (/sys/class/gpio) does not exist on this kernel;\n"
-    "                  use wiringPiSetup(), wiringPiSetupGpio() or wiringPiSetupPhys() instead\n") ;
+  /* The sysfs GPIO interface (/sys/class/gpio) is gone from this kernel.
+   * To keep programs written for wiringPiSetupSys() running, we alias it
+   * to the chardev backend with BCM numbering (sysfs used BCM numbers). */
+  static int warned = 0 ;
+  if (!warned++)
+    fprintf (stderr,
+      "wiringJON: wiringPiSetupSys(): /sys/class/gpio no longer exists on this kernel;\n"
+      "           running in GPIO (BCM-style) mode instead — no action needed.\n") ;
+  return doSetup (WPI_MODE_GPIO) ;
 }
 
 int wiringPiSetupPiFace (void)
