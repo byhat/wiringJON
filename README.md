@@ -94,6 +94,20 @@ and 7 on the 40-pin header):
 
 Access without sudo: user must be in the `gpio` group (default on L4T).
 
+## Run the hardware tests
+
+    make -C tests
+
+| Test | Wire on the header | Prerequisites |
+|---|---|---|
+| `test_gpio phys\|gpio\|pins` | pin 32 ↔ pin 7 | none |
+| `test_serial` | pin 8 (TX) ↔ pin 10 (RX) | UART enabled on 8/10 (`jetson-io.py`); device `/dev/ttyTHS1`, override `WIRINGPI_SERIAL_DEV` |
+| `test_spi` | pin 19 (MOSI) ↔ pin 21 (MISO) | SPI enabled via `jetson-io.py` (creates `/dev/spidev0.0`; pins 19–26 stop being GPIO), override `WIRINGPI_SPI_BUS` |
+| `test_i2c` | any I2C device on pins 3/5 (informational) | bus default `/dev/i2c-1`, override `WIRINGPI_I2C_BUS`; check `i2cdetect -l` |
+
+The SPI test exploits full duplex: with MOSI tied to MISO the received
+stream is the transmitted stream shifted by one byte.
+
 ## Repository layout
 
     wiringPi/       core library (wiringPi.c = gpiod backend, pinmap.c,
