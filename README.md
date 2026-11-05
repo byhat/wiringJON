@@ -15,23 +15,38 @@ registers.
     }
     gcc blink.c -o blink -lwiringPi
 
-## Status (milestone 1)
+## Status
 
-Done and hardware-verified:
+Core (milestone 1) — written, hardware verification pending board return:
 
 - `wiringPiSetup`, `wiringPiSetupGpio`, `wiringPiSetupPhys`,
   `wiringPiSetupPinType`, `wiringPiSetupGpioDevice` — all numbering modes
-- `pinMode` (INPUT/OUTPUT/PM_OFF), `digitalRead`, `digitalWrite`
+- `pinMode` (INPUT/OUTPUT/PM_OFF/PWM_OUTPUT), `digitalRead`, `digitalWrite`
 - `pullUpDnControl` (best-effort, see limitations)
 - `wiringPiISR` / `wiringPiISR2` / `wiringPiISRStop` / `waitForInterrupt2`
   on gpiod edge events (threaded callbacks, like the original)
 - `delay`, `delayMicroseconds`, `millis`, `micros`, `piMicros64`
 - `pulseIn`/`pulseInNS`, `frequencyIn`
 - threads: `piThreadCreate`, `piLock`/`piUnlock`, `piHiPri`
-- expander node system (`wiringPiNewNode`/`wiringPiFindNode`) for devLib
+- expander node system (`wiringPiNewNode`/`wiringPiFindNode`) + 25 drivers
+  from wiringPi 3.20 (`mcp23017Setup`, `pcf8574Setup`, `ads1115Setup`, …)
 
-Planned: devLib (I2C/SPI/serial/softPwm), `gpio` CLI with `readall`,
-hardware PWM (`/sys/class/pwm`, pins 15/32/33), udev rules, .deb package.
+Full stack (written, compiles, on-board check pending):
+
+- **devLib** (`libwiringPiDev`): lcd, lcd128x64, ds1302, maxdetect, piNes,
+  gertboard, piFace, piGlow, scrollPhat
+- **`gpio` CLI**: `readall` (Orin Nano 40-pin table), `mode/read/write/
+  toggle/blink/pwm/pwmTone/wfi/qmode/i2cd/...`; sysfs commands
+  (`export/edge/...`) report deprecated, like wiringPi 3.2+ on modern
+  kernels
+- **hardware PWM** via `/sys/class/pwm` on pins 15/32/33 with wiringPi
+  `pwmSetRange/pwmSetClock/pwmWrite` semantics
+  (`WIRINGPI_PWM_BASE_HZ` env for exact frequency control)
+- **serial/I2C/SPI**: `wiringSerial`, `wiringPiI2C` (+ classic
+  `wiringI2C.h` alias), `wiringPiSPI` (+ `wiringSPI.h` alias);
+  bus overrides `WIRINGPI_I2C_BUS`, `WIRINGPI_SPI_BUS`
+- **wiringPiD** daemon (drcNet), classic **examples**, udev rule, .deb
+  template (`./build debian`)
 
 ## Numbering schemes
 
@@ -53,8 +68,10 @@ Jetson.GPIO library.
 - **Pulls**: Tegra header pull resistors are usually fixed by the pinmux;
   `pullUpDnControl()` forwards the request to the kernel and reports
   (once) when the hardware refuses.
-- **PWM/clock**: `pwmWrite`/`GPIO_CLOCK` are stubs with diagnostics until
-  the `/sys/class/pwm` backend lands. Hardware PWM only on pins 15/32/33.
+- **PWM/clock**: hardware PWM only on pins 15/32/33 and requires the PWM
+  pin function enabled in the device tree
+  (`sudo /opt/nvidia/jetson-io/jetson-io.py`); `gpioClockSet` has no
+  Jetson equivalent. Balanced PWM mode is treated as mark-space.
 - Pins 3/5 (I2C1), 8/10 (UART1), 27/28 (I2C) have **no GPIO mux** on this
   carrier: `pinMode()` on them fails with a clear message.
 - `digitalWrite`/`digitalRead` auto-request the line if `pinMode()` was
@@ -78,11 +95,17 @@ Access without sudo: user must be in the `gpio` group (default on L4T).
 
 ## Repository layout
 
-    wiringPi/       core library (wiringPi.c = gpiod backend, pinmap.c)
+    wiringPi/       core library (wiringPi.c = gpiod backend, pinmap.c,
+                    pwmJetson.c = sysfs PWM, I2C/SPI/serial/soft*, 25 expanders)
+    devLib/         libwiringPiDev (lcd, ds1302, gertboard, ...)
+    gpio/           gpio CLI (readall with the Orin Nano table)
+    wiringPiD/      drcNet daemon
     tests/          hardware loopback tests
+    examples/       classic wiringPi examples, unchanged
+    udev/           user-level access rules
+    debian-template/ .deb packaging (./build debian)
     scripts/        test-bench helpers (SSH runner, GPIO probes)
-    third_party/    vendored upstream wiringPi 3.20 (headers, devLib, gpio
-                    tool — used as the API contract and for later phases)
+    third_party/    vendored upstream wiringPi 3.20 (API contract)
 
 ## Pin map provenance
 

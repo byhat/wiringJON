@@ -1,0 +1,15 @@
+Package: wiringjon
+Version: ${VERSION}
+Section: libs
+Priority: optional
+Architecture: ${ARCH}
+Depends: libc6, libgpiod2
+Conflicts: wiringpi
+Provides: wiringpi
+Maintainer: wiringJON project <wiringjon@localhost>
+Description: wiringPi-compatible GPIO library for the Jetson Orin Nano
+ Drop-in replacement for wiringPi on NVIDIA Jetson Orin Nano / NX
+ Developer Kits, using libgpiod (GPIO character device) instead of
+ BCM peripheral registers. Provides libwiringPi, libwiringPiDev,
+ headers and the gpio command line utility; programs written for
+ wiringPi compile and link unchanged (-lwiringPi -lwiringPiDev).

@@ -51,6 +51,7 @@ typedef struct {
   const char   *socPin;    /* Tegra234 pad, e.g. "PAC.06"             */
   const char   *chip;      /* libgpiod chip name, e.g. "gpiochip0"    */
   int           line;      /* line offset inside chip, -1 if not GPIO */
+  const char   *pwmDev;    /* DT node of the PWM controller or NULL   */
   wjonPinType   type;
 } wjonPinDescr;
 

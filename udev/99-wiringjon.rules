@@ -1,0 +1,9 @@
+# wiringJON udev rules — user-level access to GPIO/PWM/I2C/SPI devices
+# (Recent L4T images already ship a gpio group; these rules make the
+#  permissions explicit and cover i2c/spi too. Install to
+#  /etc/udev/rules.d/ and run: sudo udevadm trigger)
+
+KERNEL=="gpiochip*", GROUP="gpio", MODE="0660"
+SUBSYSTEM=="pwm",      GROUP="gpio", MODE="0660"
+KERNEL=="spidev*",     GROUP="spi",  MODE="0660"
+KERNEL=="i2c-[0-9]*",  GROUP="i2c",  MODE="0660"

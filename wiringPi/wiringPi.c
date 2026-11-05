@@ -41,15 +41,19 @@
 #include "wiringPi.h"
 #include "pinmap.h"
 #include "version.h"
+#include "pwmJetson.h"
 
 #define WPI_CONSUMER	"wiringPi"
 #define MAX_CHIPS	4
 #define MAX_PHYS	64		/* physical header pins 1..40 (+air) */
+#define DIR_PWM		200		/* physDir marker: line driven by PWM */
 
 /* ------------------------------------------------------------------ */
 /* state                                                               */
 
 static volatile int wpiMode = WPI_MODE_UNINITIALISED ;
+
+int wiringPiDebug = 0 ;			/* gpio tool sets this */
 
 static struct gpiod_chip *chips [MAX_CHIPS] ;
 static char chipNames [MAX_CHIPS][32] ;
@@ -625,6 +629,8 @@ void pinMode (int pin, int mode)
     case SOFT_PWM_OUTPUT:
     case SOFT_TONE_OUTPUT:
     {
+      if (physDir [phys] == DIR_PWM)
+	wjonPwmStop (phys) ;
       struct gpiod_line *l = lineFor (pd) ;
       if (!l)
 	return ;
@@ -646,6 +652,8 @@ void pinMode (int pin, int mode)
 
     case INPUT:
     {
+      if (physDir [phys] == DIR_PWM)
+	wjonPwmStop (phys) ;
       struct gpiod_line *l = lineFor (pd) ;
       if (!l)
 	return ;
@@ -667,16 +675,28 @@ void pinMode (int pin, int mode)
 
     case PM_OFF:					/* release to floating input */
       wiringPiISRStop (pin) ;
+      if (physDir [phys] == DIR_PWM)
+	wjonPwmStop (phys) ;
       physRelease (phys) ;
       break ;
 
     case PWM_OUTPUT:
     case PWM_MS_OUTPUT:
     case PWM_BAL_OUTPUT:
-      fprintf (stderr,
-        "wiringJON: pinMode(%d,PWM): hardware PWM is not implemented yet "
-        "(planned via /sys/class/pwm on pins 15/32/33); pin left unchanged\n", pin) ;
+    {
+      if (!pd->pwmDev)
+      {
+	fprintf (stderr,
+	  "wiringJON: pinMode(%d,PWM): pin %s (physical %d) has no PWM function; "
+	  "PWM capable pins: 15, 32, 33\n", pin, pd->name, pd->phys) ;
+	break ;
+      }
+      wiringPiISRStop (pin) ;
+      physRelease (phys) ;
+      if (wjonPwmStart (pd->phys, pd->pwmDev) == 0)
+	physDir [phys] = DIR_PWM ;
       break ;
+    }
 
     case GPIO_CLOCK:
       fprintf (stderr, "wiringJON: pinMode(%d,GPIO_CLOCK): no GPIO clock function on Jetson\n", pin) ;
@@ -772,6 +792,9 @@ int digitalRead (int pin)
   const wjonPinDescr *pd = pinDescr (pin) ;
   int phys = pd->phys ;
 
+  if (physDir [phys] == DIR_PWM)		/* line is owned by sysfs PWM */
+    return 0 ;
+
   struct gpiod_line *l = physLine [phys] ;
   if (!l)
   {
@@ -787,17 +810,27 @@ void pwmWrite (int pin, int value)
 {
   struct wiringPiNodeStruct *node = wiringPiFindNode (pin) ;
   if (node) { node->pwmWrite (node, pin, value) ; return ; }
-  fprintf (stderr,
-    "wiringJON: pwmWrite(%d): hardware PWM not implemented yet; "
-    "see softPwm or /sys/class/pwm\n", pin) ;
+
+  const wjonPinDescr *pd = pinDescr (pin) ;
+  if (physDir [pd->phys] != DIR_PWM)
+    pinMode (pin, PWM_OUTPUT) ;			/* auto-start, see file header */
+  wjonPwmWrite (pd->phys, value) ;
 }
 
-void pwmToneWrite (int pin, int freq)  { pwmWrite (pin, 0) ; (void)freq ; }
-void pwmSetMode (int mode)             { (void)mode ; }
-void pwmSetRange (unsigned int range)  { (void)range ; }
-void pwmSetChannelRange (unsigned int channel, unsigned int range) { (void)channel ; (void)range ; }
-void pwmSetPinRange (int pin, unsigned int range) { (void)pin ; (void)range ; }
-void pwmSetClock (int divisor)         { (void)divisor ; }
+void pwmToneWrite (int pin, int freq)
+{
+  struct wiringPiNodeStruct *node = wiringPiFindNode (pin) ;
+  if (node) { node->pwmWrite (node, pin, 0) ; return ; }
+  const wjonPinDescr *pd = pinDescr (pin) ;
+  if (physDir [pd->phys] != DIR_PWM)
+    pinMode (pin, PWM_OUTPUT) ;
+  wjonPwmTone (pd->phys, freq) ;
+}
+void pwmSetMode (int mode)             { wjonPwmSetMode (mode) ; }
+void pwmSetRange (unsigned int range)  { wjonPwmSetRange (range) ; }
+void pwmSetChannelRange (unsigned int channel, unsigned int range) { (void)channel ; wjonPwmSetRange (range) ; }
+void pwmSetPinRange (int pin, unsigned int range) { (void)pin ; wjonPwmSetRange (range) ; }
+void pwmSetClock (int divisor)         { if (divisor > 0) wjonPwmSetClock ((unsigned int)divisor) ; }
 void gpioClockSet (int pin, int freq)
 {
   (void)freq ;
@@ -832,6 +865,8 @@ int getAlt (int pin)
   if (node)
     return WPI_ALT_UNKNOWN ;
   const wjonPinDescr *pd = pinDescr (pin) ;
+  if (physDir [pd->phys] == DIR_PWM)
+    return WPI_ALT0 ;				/* PWM alternate, like the Pi */
   if (!physLine [pd->phys])
     return WPI_NONE ;
   return (physDir [pd->phys] == OUTPUT) ? WPI_ALT_OUTPUT : WPI_ALT_INPUT ;
