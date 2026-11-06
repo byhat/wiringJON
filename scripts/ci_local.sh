@@ -36,6 +36,7 @@ echo "== mock unit tests (emulated gpiochips + bench wire) =="
 rm -rf /tmp/wjonmock && mkdir -p /tmp/wjonmock
 ok=0
 for f in wiringPi/*.c ; do
+  [ "$f" = "wiringPi/wiringjon-padfix.c" ] && continue	# standalone tool, not lib source
   b=$(basename "${f%.c}")
   gcc -c -O1 -D_GNU_SOURCE -IwiringPi $GPIOD_INC "$f" -o "/tmp/wjonmock/$b.o" || exit 1
   ok=$((ok+1))
