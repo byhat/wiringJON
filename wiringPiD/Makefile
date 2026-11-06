@@ -8,7 +8,7 @@ CC	?= gcc
 INCLUDE	= -I../wiringPi
 CFLAGS	= $(DEBUG) -Wall -Wextra $(INCLUDE) -D_GNU_SOURCE
 LDFLAGS	= -L../wiringPi
-LIBS	= -lwiringPi -lpthread -lm
+LIBS	= -lwiringPi -lpthread -lm -lcrypt
 
 SRC	= daemonise.c network.c runRemote.c wiringpid.c
 OBJ	= $(SRC:.c=.o)

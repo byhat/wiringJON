@@ -78,18 +78,23 @@ def main():
         finally:
             cli.close()
     if args[0] == "--sync":
-        # --sync LOCALDIR REMOTEDIR [exclude1 exclude2 ...]
+        # --sync LOCALDIR REMOTEDIR [exclude-glob1 exclude-glob2 ...]
+        import fnmatch
         import io
         import os as _os
         import tarfile
         local, remote = args[1], args[2]
         excludes = args[3:]
+
+        def excluded(name):
+            return any(fnmatch.fnmatch(name, pat) for pat in excludes)
+
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tf:
             for root, dirs, files in os.walk(local):
-                dirs[:] = [d for d in dirs if d not in excludes]
+                dirs[:] = [d for d in dirs if not excluded(d)]
                 for fn in files:
-                    if fn in excludes:
+                    if excluded(fn):
                         continue
                     full = _os.path.join(root, fn)
                     tf.add(full, arcname=_os.path.relpath(full, local))

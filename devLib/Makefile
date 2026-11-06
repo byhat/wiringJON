@@ -25,7 +25,11 @@ OBJ	= $(SRC:.c=.o)
 HEADERS	= ds1302.h gertboard.h lcd128x64.h lcd.h maxdetect.h piFace.h	\
 	piGlow.h piNes.h scrollPhat.h font.h scrollPhatFont.h
 
-all:		$(DYNAMIC) $(STATIC)
+all:		$(DYNAMIC) $(STATIC) links
+
+links:
+		ln -sf $(DYNAMIC) $(SONAME)
+		ln -sf $(DYNAMIC) libwiringPiDev.so
 
 $(DYNAMIC):	$(OBJ)
 		$(CC) -shared -Wl,-soname,$(SONAME) -o $(DYNAMIC) $(OBJ) $(LIBS)
@@ -55,4 +59,4 @@ uninstall:
 		rm -f $(DESTDIR)$(PREFIX)/include/{ds1302,gertboard,lcd128x64,lcd,maxdetect,piFace,piGlow,piNes,scrollPhat,font,scrollPhatFont}.h
 		$(LDCONFIG)
 
-.PHONY:		all clean install uninstall
+.PHONY:		all links clean install uninstall

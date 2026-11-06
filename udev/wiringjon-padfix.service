@@ -1,0 +1,10 @@
+[Unit]
+Description=wiringJON header pad fixup (clear padctl tristate on 40-pin GPIO pads)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wiringjon-padfix
+
+[Install]
+WantedBy=multi-user.target

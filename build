@@ -81,6 +81,12 @@ xinstall|*)
     $sudo udevadm trigger >/dev/null 2>&1 || true
     echo "installed udev rule 99-wiringjon.rules"
   fi
+  if [ -d /lib/systemd/system ] ; then
+    $sudo install -m 0644 udev/wiringjon-padfix.service /etc/systemd/system/ && \
+      $sudo systemctl daemon-reload && \
+      $sudo systemctl enable --now wiringjon-padfix.service >/dev/null 2>&1 && \
+      echo "enabled wiringjon-padfix boot service"
+  fi
   echo
   echo "All Done."
   echo ""

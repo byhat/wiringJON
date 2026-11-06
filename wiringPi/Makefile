@@ -19,13 +19,20 @@ DEBUG	= -O2
 CC	?= gcc
 INCLUDE	= -I.
 CFLAGS	= $(DEBUG) -Wall -Wextra $(INCLUDE) -fPIC -D_GNU_SOURCE
-LIBS	= -lgpiod -lpthread
+LIBS	= -lgpiod -lpthread -lcrypt -lm
 
 SRC	= $(wildcard *.c)
 OBJ	= $(SRC:.c=.o)
 HEADERS	= $(wildcard *.h)
 
-all:		$(DYNAMIC) $(STATIC)
+all:		$(DYNAMIC) $(STATIC) links wiringjon-padfix
+
+links:
+		ln -sf $(DYNAMIC) $(SONAME)
+		ln -sf $(DYNAMIC) libwiringPi.so
+
+wiringjon-padfix:	wiringjon-padfix.c padctlJetson.o
+		$(CC) $(DEBUG) -I. -o $@ wiringjon-padfix.c padctlJetson.o
 
 $(DYNAMIC):	$(OBJ)
 		$(CC) -shared -Wl,-soname,$(SONAME) -o $(DYNAMIC) $(OBJ) $(LIBS)
@@ -37,9 +44,9 @@ $(STATIC):	$(OBJ)
 		$(CC) -c $(CFLAGS) -o $@ $<
 
 clean:
-		rm -f $(OBJ) $(DYNAMIC) $(STATIC) *~
+		rm -f $(OBJ) $(DYNAMIC) $(STATIC) wiringjon-padfix *~
 
-install:	$(DYNAMIC) $(STATIC)
+install:	$(DYNAMIC) $(STATIC) wiringjon-padfix
 		install -m 0755 -d						$(DESTDIR)$(PREFIX)/include
 		install -m 0644 $(HEADERS)					$(DESTDIR)$(PREFIX)/include
 		install -m 0755 -d						$(DESTDIR)$(PREFIX)/lib
@@ -47,6 +54,8 @@ install:	$(DYNAMIC) $(STATIC)
 		ln -sf libwiringPi.so.$(VERSION)				$(DESTDIR)$(PREFIX)/lib/$(SONAME)
 		ln -sf libwiringPi.so.$(VERSION)				$(DESTDIR)$(PREFIX)/lib/libwiringPi.so
 		install -m 0755 libwiringPi.a					$(DESTDIR)$(PREFIX)/lib/libwiringPi.a
+		install -m 0755 -d						$(DESTDIR)$(PREFIX)/sbin
+		install -m 0755 wiringjon-padfix				$(DESTDIR)$(PREFIX)/sbin/wiringjon-padfix
 		$(LDCONFIG)
 
 uninstall:
@@ -56,4 +65,4 @@ uninstall:
 		rm -f $(DESTDIR)$(PREFIX)/include/pinmap.h
 		$(LDCONFIG)
 
-.PHONY:		all clean install uninstall
+.PHONY:		all links clean install uninstall

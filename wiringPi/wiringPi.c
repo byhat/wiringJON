@@ -42,6 +42,15 @@
 #include "pinmap.h"
 #include "version.h"
 #include "pwmJetson.h"
+#include "padctlJetson.h"
+
+/* bias flag fallbacks: some gpiod.h variants lack the request-flag macros
+ * even though the kernel supports them (values from linux/gpio.h uAPI) */
+#ifndef GPIOD_LINE_REQUEST_FLAG_BIAS_DISABLE
+  #define GPIOD_LINE_REQUEST_FLAG_BIAS_DISABLE   (1 << 3)
+  #define GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_DOWN (1 << 4)
+  #define GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP   (1 << 5)
+#endif
 
 #define WPI_CONSUMER	"wiringPi"
 #define MAX_CHIPS	4
@@ -553,6 +562,24 @@ static int doSetup (int mode)
   if (wjonDebug ())
     fprintf (stderr, "wiringJON: board '%s', %d chip(s), mode %d\n",
              wjonBoardName (), numChips, mode) ;
+
+  /* Boards whose bootloader leaves the header pads tristated (e.g. the
+   * Engineering Reference DevKit) need a one-time padctl fixup; without
+   * it, outputs do not reach the pins. Needs root; the wiringjon-padfix
+   * boot service (installed by ./build) covers the non-root case. */
+  if (wjonPadctlFixup () < 0)
+  {
+    /* non-root: stay quiet when the padfix helper is installed (the boot
+     * service normally handled it); warn loudly when it is missing */
+    if (access ("/usr/local/sbin/wiringjon-padfix", X_OK) != 0)
+    {
+      static int padWarned = 0 ;
+      if (!padWarned++)
+        fprintf (stderr,
+          "wiringJON: padctl fixup skipped (not root); if pins don't switch, run:"
+          " sudo systemctl enable --now wiringjon-padfix\n") ;
+    }
+  }
 
   wpiMode = mode ;
   return 0 ;

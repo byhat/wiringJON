@@ -6,6 +6,36 @@ same `-lwiringPi`, same program behaviour — different backend: the Linux
 GPIO character device via **libgpiod** instead of Broadcom `/dev/mem`
 registers.
 
+## Hardware verification log (2026-11-06, Orin Nano Super devkit, R39)
+
+Verified against a physical wire between header pins 32 (GPIO07) and 7
+(GPIO09):
+
+- `test_gpio phys/gpio/pins`: **25/25 checks PASS** — static levels,
+  self-readback, 200 toggle cycles (0 mismatches), pull report, ISR
+  (200 interrupts from 100 toggles), `waitForInterrupt2`, timing
+- `digitalWrite` latency ≈ 3.2 µs/op through the chardev backend
+- `softPwm` 50% duty → 99 rising edges/s counted through the wire
+- `gpio -v`, `gpio readall` (live table), `gpio -1 mode/write/read`
+  end-to-end loopback through the CLI
+- `gpioinfo` shows consumer `wiringPi` on lines requested by the library
+- mock CI on the host: 21/21 logic tests + readall render
+
+### The padctl tristate quirk (important for this board)
+
+The Engineering Reference Developer Kit (R39-era L4T) leaves all 40-pin
+header pads with the **padctl TRISTATE bit set** — inputs read, but no
+pad can drive anything. There is no pinmux DT node to fix it, so
+wiringJON handles it itself:
+
+- `wiringPiSetup*()` fixes all 22 header pads when running as root;
+- `./build` installs a `wiringjon-padfix` systemd oneshot that does the
+  same at every boot, so normal (gpio-group) users work out of the box.
+
+Bits cleared/set per pad: SFIO-select=0 (GPIO), tristate=0, e_input=1;
+pull/mux bits preserved (addresses from the Jetson.GPIO pin data,
+cross-checked with `pinctrl-tegra234.c`).
+
     # your existing code compiles and runs unchanged:
     #include <wiringPi.h>
     int main (void) {
@@ -44,7 +74,11 @@ Full stack (written, compiles, on-board check pending):
   (`WIRINGPI_PWM_BASE_HZ` env for exact frequency control)
 - **serial/I2C/SPI**: `wiringSerial`, `wiringPiI2C` (+ classic
   `wiringI2C.h` alias), `wiringPiSPI` (+ `wiringSPI.h` alias);
-  bus overrides `WIRINGPI_I2C_BUS`, `WIRINGPI_SPI_BUS`
+  defaults verified on the devkit: header UART pins 8/10 =
+  `/dev/ttyTHS1` (uarta@3100000), header I2C pins 3/5 = `/dev/i2c-1`
+  (override `WIRINGPI_I2C_BUS`, check `i2cdetect -l`); SPI needs the
+  pin function enabled (`jetson-io.py`) → `/dev/spidev0.x`
+  (override `WIRINGPI_SPI_BUS`)
 - **wiringPiD** daemon (drcNet), classic **examples**, udev rule, .deb
   template (`./build debian`)
 
